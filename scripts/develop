@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -e
+cd "$(dirname "$0")/.."
+export PYTHONPATH="${PWD}${PYTHONPATH:+:${PYTHONPATH}}"
+hass --config "${PWD}/config" --debug

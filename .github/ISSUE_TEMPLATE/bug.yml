@@ -1,0 +1,20 @@
+name: Bug report
+description: Report a problem with Comelit Local
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Include expected behavior and steps to reproduce. Do not include credentials.
+    validations:
+      required: true
+  - type: textarea
+    id: versions
+    attributes:
+      label: Versions
+      description: Home Assistant version, integration version, gateway model and firmware.
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Redacted diagnostics
+      description: Remove tokens, passwords, activation codes and personal information before sharing.
