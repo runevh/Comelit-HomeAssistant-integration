@@ -2,6 +2,12 @@
   "config": {
     "abort": {
       "not_implemented": "Comelit Local is a development scaffold. Gateway setup is not implemented yet."
+    },
+    "step": {
+      "user": {
+        "title": "Comelit Local",
+        "description": "Set up the Comelit Local integration."
+      }
     }
   }
 }
