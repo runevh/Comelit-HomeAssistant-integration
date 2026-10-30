@@ -6,6 +6,7 @@ focused on the Comelit 1456B Multi-User Gateway.
 ## Current functionality
 
 - Add a gateway using its IP address, ViP TCP port and an existing user token.
+- Redeem a manually generated activation code for a separate Home Assistant user.
 - Validate authentication and read the gateway configuration before completing setup.
 - Register the gateway as a device, with clear connection and authentication errors.
 - Reconfigure the connection or replace a rejected token.
@@ -16,18 +17,21 @@ listen for rings, or provide video/audio. Video support on the 1456B remains
 unverified. There is no persistent connection or live connection-status sensor yet;
 configuration is read during setup/reload and the connection is then closed.
 
-Automatic token creation is deferred. Setup never creates users, generates activation
-codes, or changes the gateway configuration.
+Automatic user-slot provisioning is deferred. Setup never creates user slots,
+generates activation codes, or resets existing users. The activation-code option
+redeems a code for the slot prepared manually in the gateway web interface.
 
 ## Installation and setup
 
 1. Add `https://github.com/runevh/Comelit-HomeAssistant-integration` as a custom
    repository in HACS with category **Integration**.
 2. Download the integration and restart Home Assistant.
-3. Disable any existing integration or test instance using the same token.
+3. Disable any existing integration or test instance using the same token. A separate
+   dedicated development user has its own token and avoids sharing that identity.
 4. Go to **Settings → Devices & services → Add integration → Comelit Local**.
-5. Enter the gateway IP address (without `http://`), the ViP TCP port (normally
-   `64100`), and its dedicated Home Assistant user token.
+5. Choose **Use an existing token** or **Use an activation code**.
+6. Enter the gateway IP address (without `http://`), the ViP TCP port (normally
+   `64100`), and the selected credential. For activation, enter a device name too.
 
 The web administration port, normally `8080`, is not the ViP port.
 The domain is `comelit_local`, separate from `comelit_intercom`.
@@ -59,42 +63,38 @@ For an installation already configured with `comelit_intercom`:
 If the dedicated token was previously saved to a private file, use that copy instead.
 The activated user should be reused; there is no need to register a second one.
 
-### If no dedicated token exists yet
+### Create a separate user with an activation code
 
-The gateway's normal app activation flow can issue a token. This requires manual
-provisioning outside this integration; the following is the protocol-level procedure
-for the 1456B, not an automatic setup feature:
+This is also the recommended approach for a development instance: use a distinct
+user named **Home Assistant Dev**, leaving the production Home Assistant user intact.
 
-1. Log in to the gateway web interface with credentials that can manage users.
-2. Select the intended apartment and verify that the selected user slot is genuinely
-   unused: device type **None**, blank name/contact metadata, and no pending activation
-   or reset controls. Do not overwrite, reset or repurpose an existing user.
-3. Set that slot to **Apps**, name it **Home Assistant**, and enable it.
-4. Generate an activation code for that slot.
-5. Use a ViP protocol client to open the **UAUT** channel on TCP `64100` (wire channel
-   type `7`) and redeem the code with this JSON request:
+1. Open the gateway web interface, normally `http://<gateway IP>:8080`, and log in
+   with credentials that can manage users.
+2. Select the intended apartment and verify that a user slot is genuinely unused:
+   device type **None** (`-`), blank name/contact metadata, and no pending activation
+   or reset controls. Do not reuse slots merely because they say "Not Activated".
+3. Set the unused slot to **Apps**, name it **Home Assistant Dev** (or another clear
+   name), and make sure it is enabled.
+4. Click **Generate activation code** for that slot.
+5. In Home Assistant, add **Comelit Local → Use an activation code**. Enter the
+   gateway IP, ViP port `64100`, the code shown for the new slot, and the same device
+   name. Enter the code directly into Home Assistant, not into an issue or log.
+6. The integration redeems the code over ViP and saves the returned token. The slot
+   should become **Activated**. Home Assistant then reads the gateway configuration
+   and registers the gateway device.
 
-   ```json
-   {
-     "message": "user-activation",
-     "activation-code": "<activation code>",
-     "description": "Home Assistant",
-     "message-type": "request",
-     "message-id": 2
-   }
-   ```
+The returned token is saved before configuration retrieval so a temporary connection
+failure after activation does not discard it. Home Assistant can retry loading the
+entry without redeeming the code again. The activation code itself is not saved.
 
-6. A successful response has `response-code: 200` and a `user-token`. Save that token
-   privately and enter it in the integration. Confirm that the intended slot is
-   activated in the web interface.
+If the gateway rejects the code, check the code and selected gateway before retrying.
+If activation times out after submission, the result may be uncertain: inspect the
+new slot first. Do not repeatedly submit codes or reset existing users. A freshly
+created development slot can be deliberately reset by its owner if necessary, but
+this integration never performs that reset.
 
-This is a framed binary protocol carrying JSON, not an HTTP endpoint; sending the
-JSON with curl will not work. The activation exchange is documented in
-[mnestrud/comelit-man's provisioning implementation](https://github.com/mnestrud/comelit-man/blob/main/custom_components/comelit_man/provisioning.py).
-Its complete provisioning routine relies on backup-based slot discovery, which can
-fail on the 1456B. Do not run it blindly against an existing installation. If a user
-is already activated but its token is unavailable, stop and recover the existing
-token rather than resetting the user or repeatedly creating new users.
+Existing activated users should use **Use an existing token**, following the recovery
+steps above. User provisioning and backup extraction are not needed by this flow.
 
 ## Local development
 

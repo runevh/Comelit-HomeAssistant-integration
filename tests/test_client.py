@@ -8,6 +8,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from custom_components.comelit_local.client import (
+    ActivationRejected,
+    ActivationUncertain,
     CannotConnect,
     GatewayClient,
     InvalidAuth,
@@ -200,3 +202,54 @@ async def test_fragmented_tcp_exchange():
         info = await GatewayClient("127.0.0.1", port).async_get_configuration(TOKEN)
         await asyncio.wait_for(completed, 2)
     assert info.directory_counts["actuator-address-book"] == 3
+
+
+async def test_activation_returns_token_without_reading_config():
+    reader, writer = connection(
+        channel_reply(71) + response(71, **{"user-token": TOKEN})
+    )
+    with patch("asyncio.open_connection", AsyncMock(return_value=(reader, writer))):
+        token = await GatewayClient("127.0.0.1").async_activate(
+            "testcode", "Home Assistant Dev"
+        )
+    assert token == TOKEN
+    assert writer.write.call_count == 2
+    packet = writer.write.call_args_list[1].args[0]
+    assert json.loads(packet[8:]) == {
+        "message": "user-activation",
+        "activation-code": "testcode",
+        "description": "Home Assistant Dev",
+        "message-id": 2,
+        "message-type": "request",
+    }
+    writer.close.assert_called_once()
+
+
+@pytest.mark.parametrize("code", [400, 401, 403, 404, 500])
+async def test_activation_rejected(code, caplog):
+    reader, writer = connection(
+        channel_reply(71) + response(71, code, **{"response-string": TOKEN})
+    )
+    with patch("asyncio.open_connection", AsyncMock(return_value=(reader, writer))):
+        with pytest.raises(ActivationRejected) as error:
+            await GatewayClient("127.0.0.1").async_activate("testcode", "Dev")
+    assert TOKEN not in str(error.value) + caplog.text
+    writer.close.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [b"", response(71), response(71, **{"user-token": "bad"}), frame(71, b"bad json")],
+)
+async def test_activation_unknown_outcome(reply):
+    reader, writer = connection(channel_reply(71) + reply)
+    with patch("asyncio.open_connection", AsyncMock(return_value=(reader, writer))):
+        with pytest.raises(ActivationUncertain):
+            await GatewayClient("127.0.0.1").async_activate("testcode", "Dev")
+    writer.close.assert_called_once()
+
+
+async def test_activation_connection_failure_before_submission():
+    with patch("asyncio.open_connection", AsyncMock(side_effect=OSError)):
+        with pytest.raises(CannotConnect):
+            await GatewayClient("127.0.0.1").async_activate("testcode", "Dev")

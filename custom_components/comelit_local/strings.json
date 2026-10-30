@@ -1,15 +1,6 @@
 {
   "config": {
     "step": {
-      "user": {
-        "title": "Comelit Local",
-        "description": "Enter the gateway IP address and a dedicated Home Assistant user token. Stop any other integration using the same token before connecting. See the README for token instructions. This version adds the gateway only; buttons, ring events and video come later.",
-        "data": {
-          "host": "Gateway IP address",
-          "port": "ViP TCP port",
-          "token": "User token"
-        }
-      },
       "reauth_confirm": {
         "title": "Comelit Local",
         "description": "Enter the gateway IP address and a dedicated Home Assistant user token. Stop any other integration using the same token before connecting. See the README for token instructions. This version adds the gateway only; buttons, ring events and video come later.",
@@ -27,18 +18,50 @@
           "port": "ViP TCP port",
           "token": "User token"
         }
+      },
+      "token": {
+        "title": "Comelit Local",
+        "description": "Enter the gateway IP address and a dedicated Home Assistant user token. Stop any other integration using the same token before connecting. See the README for token instructions. This version adds the gateway only; buttons, ring events and video come later.",
+        "data": {
+          "host": "Gateway IP address",
+          "port": "ViP TCP port",
+          "token": "User token"
+        }
+      },
+      "user": {
+        "title": "Comelit Local",
+        "description": "Connect using an existing dedicated token or a new activation code from the gateway.",
+        "menu_options": {
+          "token": "Use an existing token",
+          "activation": "Use an activation code"
+        }
+      },
+      "activation": {
+        "title": "Activate a dedicated Home Assistant user",
+        "description": "In the Comelit web interface, configure an unused user slot as Apps, give it a name (for example Home Assistant Dev), and generate an activation code. Enter that code here. Leave existing activated users unchanged. The token will be saved automatically; gateway configuration will then be loaded.",
+        "data": {
+          "host": "Gateway IP address",
+          "port": "ViP TCP port",
+          "activation_code": "Activation code",
+          "description": "Device name"
+        }
       }
     },
     "error": {
       "invalid_host": "Enter a valid gateway IP address, without a URL or port.",
       "cannot_connect": "Cannot connect to the gateway. Check its IP address, ViP port and network connection.",
       "invalid_auth": "The token is invalid or was rejected. Enter the 32-character hexadecimal token for a dedicated Home Assistant user.",
-      "invalid_response": "The gateway returned an unsupported response. Check the ViP port and gateway compatibility."
+      "invalid_response": "The gateway returned an unsupported response. Check the ViP port and gateway compatibility.",
+      "invalid_code": "Enter the activation code shown for the new user in the Comelit web interface.",
+      "invalid_name": "Enter a device name.",
+      "activation_rejected": "The gateway rejected this code. Check the code and the selected gateway, or go back and use an existing token."
     },
     "abort": {
       "already_configured": "This gateway is already configured.",
       "reauth_successful": "Authentication updated successfully.",
-      "reconfigure_successful": "Gateway settings updated successfully."
+      "reconfigure_successful": "Gateway settings updated successfully.",
+      "already_in_progress": "Another setup flow for this gateway is already in progress. Finish or cancel that flow first.",
+      "activation_uncertain": "No usable token was received, but the gateway may have activated the user. Check that slot in the Comelit web interface before retrying. If it is activated, recover its token or deliberately reset only this new test user; do not reset an existing phone or Home Assistant user."
     }
   }
 }
