@@ -10,6 +10,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.translation import async_get_translations
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.comelit_local import RuntimeData
 from custom_components.comelit_local.client import (
     ActivationRejected,
     ActivationUncertain,
@@ -67,7 +68,7 @@ async def test_setup_creates_entry_and_device(hass):
         await hass.async_block_till_done()
     entry = result["result"]
     assert entry.data == DATA
-    assert entry.runtime_data == INFO
+    assert entry.runtime_data.info == INFO
     devices = dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
     assert len(devices) == 1
     assert devices[0].manufacturer == "Comelit"
@@ -139,7 +140,7 @@ async def test_setup_error(hass, error):
 async def test_diagnostics_exclude_credentials_and_identity(hass):
     entry = MockConfigEntry(domain=DOMAIN, data=DATA)
     entry.add_to_hass(hass)
-    entry.runtime_data = INFO
+    entry.runtime_data = RuntimeData(INFO)
     diagnostics = await async_get_config_entry_diagnostics(hass, entry)
     assert diagnostics["directory_counts"] == INFO.directory_counts
     for private in (DATA["token"], DATA["host"], INFO.apartment):

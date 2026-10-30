@@ -15,15 +15,18 @@ async def async_get_config_entry_diagnostics(
     entry: ComelitConfigEntry,
 ) -> dict[str, Any]:
     """Return only explicit safe fields, never config entry data or raw replies."""
-    info = getattr(entry, "runtime_data", None)
+    runtime = getattr(entry, "runtime_data", None)
+    info = runtime.info if runtime else None
+    bridge = runtime.bridge if runtime else None
     return {
         "entry_state": entry.state.value,
-        "connection_mode": "configuration read on setup; no persistent connection",
+        "connection_mode": "on-demand video" if bridge else "configuration only",
+        "rtsp": bridge.diagnostics() if bridge else {"enabled": False},
         "directory_counts": info.directory_counts if info else None,
         "features": {
             "actuators": False,
             "ring_events": False,
-            "video": False,
+            "video": bool(bridge),
             "audio": False,
         },
     }

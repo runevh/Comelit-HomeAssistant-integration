@@ -8,6 +8,7 @@ from typing import Any, Self
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.core import callback
 from homeassistant.data_entry_flow import AbortFlow
 from homeassistant.helpers import selector
 
@@ -22,6 +23,7 @@ from .client import (
 )
 from .const import CONF_TOKEN, DEFAULT_PORT, DOMAIN
 from .discovery import async_discover_gateways
+from .options_flow import VideoOptionsFlow
 
 _MAX_CODE_LENGTH = 64
 
@@ -55,6 +57,14 @@ def _schema(
 
 class ComelitLocalConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Validate credentials before creating or updating a config entry."""
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,  # noqa: ARG004 - HA signature
+    ) -> VideoOptionsFlow:
+        """Offer the optional RTSP bridge after gateway setup."""
+        return VideoOptionsFlow()
 
     VERSION = 1
     _connection: tuple[str, int] | None = None

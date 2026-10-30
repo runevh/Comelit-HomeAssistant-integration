@@ -78,5 +78,22 @@
       "already_in_progress": "Another setup flow for this gateway is already in progress. Finish or cancel that flow first.",
       "activation_uncertain": "No usable token was received, but the gateway may have activated the user. Check that slot in the Comelit web interface before retrying. If it is activated, recover its token or deliberately reset only this new test user; do not reset an existing phone or Home Assistant user."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Entrance video / RTSP",
+        "description": "Enable an on-demand video stream hosted by Home Assistant. Username: comelit. Use a separate RTSP password (at least 12 characters); leave it blank to keep the existing password. Other devices use rtsp://comelit:PASSWORD@HOME_ASSISTANT_IP:PORT/comelit over TCP. Video remains active while a viewer such as Frigate is connected. Call coexistence and continuous recording are still experimental.",
+        "data": {
+          "rtsp_enabled": "Enable RTSP video bridge",
+          "rtsp_lan": "Allow viewers from other devices on the network",
+          "rtsp_port": "RTSP port",
+          "rtsp_password": "Stream password"
+        }
+      }
+    },
+    "error": {
+      "password_required": "Enter a separate RTSP password of at least 12 characters."
+    }
   }
 }

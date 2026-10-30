@@ -10,13 +10,16 @@ focused on the Comelit 1456B Multi-User Gateway.
 - Redeem a manually generated activation code for a separate Home Assistant user.
 - Validate authentication and read the gateway configuration before completing setup.
 - Register the gateway as a device, with clear connection and authentication errors.
+- Host an optional authenticated RTSP video bridge for remote viewers such as Frigate.
+- View named entrance cameras and snapshots directly in Home Assistant.
 - Reconfigure the connection or replace a rejected token.
 - Download diagnostics containing address-book counts without credentials or addresses.
 
-This version adds the gateway device only. It does not yet create actuator buttons,
-listen for rings, or provide video/audio. Video support on the 1456B remains
-unverified. There is no persistent connection or live connection-status sensor yet;
-configuration is read during setup/reload and the connection is then closed.
+This video feature branch adds an on-demand RTSP bridge inside Home Assistant.
+The 1456B successfully supplied H.264 entrance video at 320×240 in live tests.
+Gate controls remain on their separate feature branch. Ring events, call answering
+and microphone audio are not implemented here.
+Continuous viewing and coexistence during a real doorbell call remain experimental.
 
 Automatic user-slot provisioning is deferred. Setup never creates user slots,
 generates activation codes, or resets existing users. The activation-code option
@@ -48,6 +51,90 @@ A network timeout or no results does not prevent manual setup.
 The web administration port, normally `8080`, is not the ViP port.
 The domain is `comelit_local`, separate from `comelit_intercom`.
 This repository has not been submitted to the HACS default catalog.
+
+## Home Assistant-hosted RTSP for Frigate
+
+There is no confirmed native RTSP endpoint on the tested gateway. Its RTSP camera
+address book is empty, and TCP ports 554, 8554 and 8557 were not reachable. This
+integration converts the verified Comelit video transport into RTSP **inside the
+Home Assistant process**. No separate bridge service or Frigate-on-HA installation
+is required. Frigate can run on another machine.
+
+1. Open **Settings → Devices & services → Comelit Local → Configure**.
+2. Enable **RTSP video bridge**, select an unused port (default **8557**), and set a
+   separate stream password of at least 12 characters. Username is **comelit**.
+   A blank password field preserves the existing password when editing options.
+3. Enable **Allow viewers from other devices on the network** for remote Frigate.
+   Otherwise the listener binds only to loopback. Ensure the HA host/container
+   makes that TCP port accessible to Frigate.
+4. Use this URL with an RTSP-over-TCP client, replacing the placeholders:
+
+   ```text
+   rtsp://comelit:STREAM_PASSWORD@HOME_ASSISTANT_IP:8557/comelit
+   ```
+
+   URL-encode special characters in the password. Do not use the Comelit token,
+   installer password, Home Assistant login, or a cloud/reverse-proxy URL here.
+   The bridge uses RTSP Basic authentication on the local network; do not expose
+   the port directly to the internet.
+5. On the separate Frigate machine, merge the
+   [example configuration](examples/frigate.yaml) and replace its placeholders
+   privately. Its `127.0.0.1:8554` address refers to **Frigate's** own go2rtc
+   restream, while the source URL points to **Home Assistant**. See the official
+   [Frigate restream documentation](https://docs.frigate.video/configuration/restream/).
+
+A viewer starts the camera session; enabled-but-idle HA does not. Multiple viewers
+share one upstream video session. When the last viewer leaves, the bridge releases
+the session after a short grace period. Integration reload, disable, and HA shutdown
+also close the listener and camera connection. Authentication is required even for
+local viewers, and invalid credentials cannot start video.
+
+The gateway may end a video session while viewers are still connected. The relay
+can establish another session while preserving the RTSP connection, but brief gaps
+may occur. It waits for current H.264 parameter sets and a keyframe before forwarding
+a new session. This is not yet a guarantee of uninterrupted 24/7 recording.
+
+**Frigate keeps its camera input connected even when object detection is disabled.**
+The example starts with recording and object detection off, but still requests
+video continuously. For on-demand-only testing, configure only the `go2rtc.streams`
+section and open it with a viewer. Physical doorbell-call coexistence still needs a
+coordinated daytime test. This implementation never sends microphone audio, answers
+incoming calls, or operates an actuator.
+
+Home Assistant's built-in [stream integration](https://www.home-assistant.io/integrations/stream/)
+proxies camera sources to HLS for browser playback; it does not replace this Comelit
+RTSP bridge. The integration now creates a native **camera entity for each entrance**
+when the bridge is enabled. Home Assistant reads the authenticated loopback feed,
+so local viewing also works with network access disabled. Frigate and HA share the
+same upstream Comelit video session.
+
+### View the camera in Home Assistant
+
+After enabling the RTSP bridge, open **Settings → Devices & services → Comelit Local**,
+select the gateway, and open the named camera (for example **Buitenpost**). You can
+also add a Picture Entity card to a dashboard:
+
+```yaml
+type: picture-entity
+entity: camera.comelit_gateway_buitenpost
+name: Buitenpost
+camera_view: live
+show_state: false
+```
+
+Use the entity ID shown in your installation if it differs. No stream password
+belongs in the dashboard card. Native HA playback uses HLS, with normal buffering;
+this is live viewing, not yet a two-way video-call interface.
+
+Camera snapshots and live cards request video on demand. Opening a dashboard that
+shows the camera may therefore start the entrance session. Home Assistant may keep
+its stream warm briefly after the last browser viewer leaves. Removing/disabling
+the integration stops its HA stream workers before closing the RTSP bridge.
+
+Diagnostics report listener state, viewer count, active-session state, sessions
+started and the last error **type**. They exclude stream credentials, gateway tokens,
+addresses, camera names, raw protocol replies and images. Upstream logs that might
+contain private payloads are disabled; integration errors are fixed/sanitized.
 
 ## Getting a token
 
@@ -126,8 +213,12 @@ discovery. Comelit Local performs its bounded gateway search only when adding th
 integration. It is separate from the household Home Assistant installation.
 
 The first startup downloads Home Assistant frontend dependencies. On Debian/Ubuntu,
-`libturbojpeg0` is an optional native dependency for faster camera snapshots; the
-dev container includes it. No video feature depends on it in this version.
+Home Assistant's snapshot pipeline needs the native TurboJPEG library (`libturbojpeg`
+on Ubuntu 24.04; `libturbojpeg0` on some other releases). The dev container includes
+it. The development launcher also detects a project-local copy at
+`.local/native/usr/lib/<architecture>-linux-gnu/libturbojpeg.so.0`, avoiding a system
+installation when necessary. HLS playback can work without it, but HA snapshots
+need the library.
 
 `scripts/develop` links the repository's `custom_components` folder into `config/`.
 Restart the local instance after Python code changes. After translation or setup-menu
@@ -167,4 +258,9 @@ The setup client is independently implemented from the observed ViP framing and
 configuration exchange. Protocol references include
 [mnestrud/comelit-man](https://github.com/mnestrud/comelit-man) (Apache-2.0) and
 [madchicken/comelit-client](https://github.com/madchicken/comelit-client).
-No implementation code from those repositories is bundled here.
+The video transport is adapted from
+[jfmlima/comelit-vip](https://github.com/jfmlima/comelit-vip) at commit
+`4c1cba401030c705132174e60fb3886f667a442f` (MIT, Copyright 2026 Jorge Lima).
+Its license, provenance and local modifications are retained in
+[the vendor directory](custom_components/comelit_local/vendor/README.md).
+The wrapper restricts this transport to receive-only entrance video.
