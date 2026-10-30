@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 cd "$(dirname "$0")/.."
 export PYTHONPATH="${PWD}${PYTHONPATH:+:${PYTHONPATH}}"
-hass --config "${PWD}/config" --debug
+# Home Assistant discovers custom integrations below its configuration directory.
+if [[ ! -e config/custom_components ]]; then
+    ln -s ../custom_components config/custom_components
+fi
+exec .ha-venv/bin/hass --config "${PWD}/config" "$@"

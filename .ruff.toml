@@ -23,3 +23,9 @@ keep-runtime-typing = true
 
 [lint.mccabe]
 max-complexity = 25
+
+[lint.per-file-ignores]
+# Fixed protocol messages are intentionally kept next to their validation checks.
+"custom_components/comelit_local/client.py" = ["EM101", "TRY003", "PLR2004", "N818"]
+"custom_components/comelit_local/__init__.py" = ["EM101", "TRY003"]
+"tests/*" = ["ANN", "D", "S101", "S105", "S106", "PLR2004", "SLF001", "SIM117"]

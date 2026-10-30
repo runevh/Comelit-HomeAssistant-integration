@@ -1,13 +1,82 @@
 {
   "config": {
-    "abort": {
-      "not_implemented": "Comelit Local is a development scaffold. Gateway setup is not implemented yet."
-    },
     "step": {
-      "user": {
+      "reauth_confirm": {
         "title": "Comelit Local",
-        "description": "Set up the Comelit Local integration."
+        "description": "Enter the gateway IP address and a dedicated Home Assistant user token. Stop any other integration using the same token before connecting. See the README for token instructions. This version adds the gateway only; buttons, ring events and video come later.",
+        "data": {
+          "host": "Gateway IP address",
+          "port": "ViP TCP port",
+          "token": "User token"
+        }
+      },
+      "reconfigure": {
+        "title": "Comelit Local",
+        "description": "Enter the gateway IP address and a dedicated Home Assistant user token. Stop any other integration using the same token before connecting. See the README for token instructions. This version adds the gateway only; buttons, ring events and video come later.",
+        "data": {
+          "host": "Gateway IP address",
+          "port": "ViP TCP port",
+          "token": "User token"
+        }
+      },
+      "token": {
+        "title": "Use an existing token",
+        "description": "Enter the token for a dedicated Home Assistant user. Stop any other integration using that same token first.",
+        "data": {
+          "token": "User token"
+        }
+      },
+      "activation": {
+        "title": "Use a pairing / activation code",
+        "description": "In the Comelit web interface, configure an unused user slot as Apps, give it a name (for example Home Assistant Dev), and generate an activation code. Enter that code here. Leave existing activated users unchanged. The token will be saved automatically; gateway configuration will then be loaded.",
+        "data": {
+          "activation_code": "Pairing / activation code",
+          "description": "Device name"
+        }
+      },
+      "user": {
+        "title": "Find a Comelit gateway",
+        "description": "Searching the local network\u2026"
+      },
+      "gateway": {
+        "title": "Choose a gateway",
+        "description": "Found {count} gateway(s) on the local network. Select one, or enter an IP address manually. Devices on other networks or custom ports may need manual setup.",
+        "data": {
+          "gateway": "Gateway"
+        }
+      },
+      "manual": {
+        "title": "Enter a gateway address",
+        "description": "Enter the gateway IP address and ViP port. The default ViP port is 64100.",
+        "data": {
+          "host": "Gateway IP address",
+          "port": "ViP TCP port"
+        }
+      },
+      "authentication": {
+        "title": "Connect to your gateway",
+        "description": "Gateway: {host}. Choose how to connect.",
+        "menu_options": {
+          "token": "Use an existing token",
+          "activation": "Use a pairing / activation code"
+        }
       }
+    },
+    "error": {
+      "invalid_host": "Enter a valid gateway IP address, without a URL or port.",
+      "cannot_connect": "Cannot connect to the gateway. Check its IP address, ViP port and network connection.",
+      "invalid_auth": "The token is invalid or was rejected. Enter the 32-character hexadecimal token for a dedicated Home Assistant user.",
+      "invalid_response": "The gateway returned an unsupported response. Check the ViP port and gateway compatibility.",
+      "invalid_code": "Enter the activation code shown for the new user in the Comelit web interface.",
+      "invalid_name": "Enter a device name.",
+      "activation_rejected": "The gateway rejected this code. Check the code and the selected gateway, or go back and use an existing token."
+    },
+    "abort": {
+      "already_configured": "This gateway is already configured.",
+      "reauth_successful": "Authentication updated successfully.",
+      "reconfigure_successful": "Gateway settings updated successfully.",
+      "already_in_progress": "Another setup flow for this gateway is already in progress. Finish or cancel that flow first.",
+      "activation_uncertain": "No usable token was received, but the gateway may have activated the user. Check that slot in the Comelit web interface before retrying. If it is activated, recover its token or deliberately reset only this new test user; do not reset an existing phone or Home Assistant user."
     }
   }
 }
