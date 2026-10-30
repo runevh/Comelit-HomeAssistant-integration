@@ -66,10 +66,10 @@ class ComelitCallCard extends HTMLElement {
       this.node = new AudioWorkletNode(this.audio, 'comelit-microphone');
       this.source = this.audio.createMediaStreamSource(mic);
       this.node.port.onmessage = event => {
-        if (!this.mic || !this.owns || this.pendingMic) return;
+        if (!this.mic || !this.owns || (this.pendingMic || 0) >= 10) return;
         let binary = ''; for (const b of event.data) binary += String.fromCharCode(b);
-        this.pendingMic = true;
-        this.command('microphone', btoa(binary)).catch(() => { this.stopMic(); this.error = 'Microphone stopped: connection lost'; this.render(); }).finally(() => this.pendingMic = false);
+        this.pendingMic = (this.pendingMic || 0) + 1;
+        this.command('microphone', btoa(binary)).catch(() => { this.stopMic(); this.error = 'Microphone stopped: connection lost'; this.render(); }).finally(() => this.pendingMic--);
       };
       this.source.connect(this.node); this.node.connect(this.audio.destination);
       this.render();
