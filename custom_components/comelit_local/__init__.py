@@ -10,6 +10,8 @@ from homeassistant.const import CONF_HOST, CONF_PORT, EVENT_HOMEASSISTANT_STOP, 
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 
+from .call_api import async_register
+from .calls import CallController
 from .client import (
     CannotConnect,
     GatewayClient,
@@ -30,6 +32,7 @@ class RuntimeData:
 
     info: GatewayInfo
     bridge: VideoBridge | None = None
+    calls: CallController | None = None
 
 
 type ComelitConfigEntry = ConfigEntry[RuntimeData]
@@ -52,6 +55,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ComelitConfigEntry) -> b
     except CannotConnect, InvalidResponse:
         raise ConfigEntryNotReady("Cannot read the gateway configuration") from None
     bridge = None
+    if entry.options.get("calls_enabled") and entry.options.get("rtsp_enabled"):
+        raise ConfigEntryNotReady(
+            "Disable the call-based RTSP bridge before enabling incoming calls; "
+            "use native RTSP for video"
+        )
     if entry.options.get("rtsp_enabled"):
         if not info.entrances:
             raise ConfigEntryNotReady("No entrance is configured for video")
@@ -74,6 +82,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ComelitConfigEntry) -> b
                 "RTSP port is unavailable; change it in integration options"
             ) from None
     entry.runtime_data = RuntimeData(info, bridge)
+    if entry.options.get("calls_enabled"):
+        await async_register(hass)
+        calls = entry.runtime_data.calls = CallController(hass, entry)
+        calls.start()
+
+        async def stop_calls(_event: Event) -> None:
+            await calls.stop()
+
+        entry.async_on_unload(
+            hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, stop_calls)
+        )
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     if bridge:
 
@@ -89,15 +108,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ComelitConfigEntry) -> b
         name="Comelit gateway",
         manufacturer="Comelit",
     )
-    await hass.config_entries.async_forward_entry_setups(entry, [Platform.CAMERA])
+    await hass.config_entries.async_forward_entry_setups(
+        entry, [Platform.CAMERA, Platform.EVENT]
+    )
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ComelitConfigEntry) -> bool:
     """Close RTSP listeners and release any active video session."""
     unloaded = await hass.config_entries.async_unload_platforms(
-        entry, [Platform.CAMERA]
+        entry, [Platform.CAMERA, Platform.EVENT]
     )
     if unloaded and entry.runtime_data.bridge:
         await entry.runtime_data.bridge.stop()
+    if unloaded and entry.runtime_data.calls:
+        await entry.runtime_data.calls.stop()
     return unloaded

@@ -24,7 +24,12 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Add one camera per configured entrance when the bridge is enabled."""
-    if entry.runtime_data.bridge:
+    if entry.options.get("native_rtsp_url") and entry.runtime_data.info.entrances:
+        # One explicitly supplied native feed maps to the first entrance.
+        async_add_entities(
+            [EntranceCamera(entry, entry.runtime_data.info.entrances[0])]
+        )
+    elif entry.runtime_data.bridge:
         async_add_entities(
             EntranceCamera(entry, entrance)
             for entrance in entry.runtime_data.info.entrances
@@ -55,6 +60,8 @@ class EntranceCamera(Camera):
 
     async def stream_source(self) -> str | None:
         """Return an authenticated loopback source only to HA's stream pipeline."""
+        if native := self._entry.options.get("native_rtsp_url"):
+            return native
         bridge = self._entry.runtime_data.bridge
         if bridge is None or not bridge.started:
             return None

@@ -12,14 +12,21 @@ focused on the Comelit 1456B Multi-User Gateway.
 - Register the gateway as a device, with clear connection and authentication errors.
 - Host an optional authenticated RTSP video bridge for remote viewers such as Frigate.
 - View named entrance cameras and snapshots directly in Home Assistant.
+- Listen for entrance rings and expose a doorbell event entity for automations.
+- Show HA notifications; optionally configure mobile push notifications.
+- Experiment with answering calls and microphone talk-back from a dashboard.
 - Reconfigure the connection or replace a rejected token.
 - Download diagnostics containing address-book counts without credentials or addresses.
 
-This video feature branch adds an on-demand RTSP bridge inside Home Assistant.
+This feature branch adds experimental incoming calls alongside entrance video.
 The 1456B successfully supplied H.264 entrance video at 320×240 in live tests.
-Gate controls remain on their separate feature branch. Ring events, call answering
-and microphone audio are not implemented here.
+Gate controls remain on their separate feature branch. Incoming ring events,
+HA notifications and explicit Answer/Microphone/Hang up controls are implemented,
+but 1456B call answering and two-way audio still need physical validation.
 Continuous viewing and coexistence during a real doorbell call remain experimental.
+The call-based bridge blocked live viewing in the Comelit app during testing;
+app access recovered when the bridge stopped. Do not use this bridge as an
+always-on Frigate source when app viewing must remain available.
 
 Automatic user-slot provisioning is deferred. Setup never creates user slots,
 generates activation codes, or resets existing users. The activation-code option
@@ -52,10 +59,77 @@ The web administration port, normally `8080`, is not the ViP port.
 The domain is `comelit_local`, separate from `comelit_intercom`.
 This repository has not been submitted to the HACS default catalog.
 
-## Home Assistant-hosted RTSP for Frigate
+## Native entrance RTSP for Frigate
 
-There is no confirmed native RTSP endpoint on the tested gateway. Its RTSP camera
-address book is empty, and TCP ports 554, 8554 and 8557 were not reachable. This
+The tested gateway has no confirmed native RTSP endpoint, but the entrance unit
+has a separate authenticated native RTSP server. Two simultaneous native RTSP
+viewers decoded video successfully, and the user confirmed simultaneous Comelit
+app live viewing during a separate one-minute native stream test. An empty gateway
+camera address book does not rule out a native
+entrance stream. See [native stream findings](experiments/README.md#native-entrance-rtsp).
+
+Use the entrance's native stream for Frigate on this installation. Home Assistant
+does not need to run or host a bridge for this video source.
+
+1. Merge [examples/frigate.yaml](examples/frigate.yaml) into the configuration on
+   your Frigate host, preserving existing cameras and other settings.
+2. Replace `ENTRANCE_IP`, `RTSP_USER`, and `RTSP_PASSWORD` privately. Use the entrance
+   unit's IP and RTSP credentials, and URL-encode special characters in credentials.
+   The tested path is `/live/h264/ch0` on port 554; other models may differ.
+3. Validate and reload the Frigate configuration, then open the `comelit` camera.
+   The example leaves recording and object detection disabled while enabling video.
+
+Frigate's go2rtc connects directly to the entrance and shares the stream with
+Frigate's camera pipeline. `127.0.0.1:8554` in the example means the Frigate host's
+own restream. Home Assistant can later consume that restream as well. See the
+[Frigate restream documentation](https://docs.frigate.video/configuration/restream/).
+Incoming-call coexistence and continuous recording still need testing.
+
+## Doorbell rings and experimental talk-back
+
+1. In **Comelit Local → Configure**, enable **experimental incoming calls**.
+   Keep **RTSP video bridge** disabled: it uses a competing call connection.
+2. Optionally enter the entrance's **native RTSP URL** to retain the camera in HA.
+   This private URL maps to the first entrance in the gateway directory; use a
+   separate camera integration for other entrances. Blank keeps the saved URL;
+   **Remove saved native RTSP URL** clears it. Credentials stay out of entity
+   attributes and diagnostics. Frigate can continue using its own native feed.
+3. Under dashboard **Resources**, add `/comelit_local/comelit-call-card.js` as a
+   **JavaScript module**. Refresh the browser, then add a manual card:
+
+   ```yaml
+   type: custom:comelit-call-card
+   entity: event.comelit_gateway_doorbell
+   ```
+
+   Use your actual event entity ID. Place the entrance Picture Entity card beside
+   it for video. The initial call controls require a Home Assistant administrator.
+4. On a ring, HA shows a persistent notification by default. Press **Answer** to
+   accept, then **Enable microphone** and grant permission to talk. **Hang up**
+   stops audio. Closing the card/browser also releases its owned call.
+
+**Desktop and mobile browsers are supported in principle.** Microphone access
+requires HTTPS or localhost; plain `http://192.168...` on a phone will not work.
+The companion app's microphone behavior still needs a device test; a foreground
+browser over HTTPS is the fallback. This is not a native phone call screen and
+cannot answer in the background. The local development instance is loopback-only,
+so use the laptop at `http://127.0.0.1:8123` for the first test.
+
+The event entity emits `ring`, `answered`, `missed_call` and `call_ended`. The event
+bus also publishes `comelit_local_doorbell` with `entry_id`, `event_type`, `call_id`
+and `entrance`. Filter on `event_type: ring` for ring automations. For mobile push,
+customize [the notification automation](examples/doorbell-notification.yaml) with
+your phone's notify action; no phone is automatically selected or configured.
+
+Native video viewing remains separate from calling. Answering in HA claims the
+call from other Comelit phones, as answering on a normal indoor unit would. Normal
+phone ringing, answer-elsewhere behavior and audio on the 1456B remain unverified
+until the [physical test checklist](CALL_PROTOCOL.md#physical-test-checklist) passes.
+HLS video can lag the call audio. See [protocol details and attribution](CALL_PROTOCOL.md).
+
+## Experimental Home Assistant-hosted RTSP fallback
+
+The bridge below is the call-based fallback. This
 integration converts the verified Comelit video transport into RTSP **inside the
 Home Assistant process**. No separate bridge service or Frigate-on-HA installation
 is required. Frigate can run on another machine.
@@ -77,11 +151,9 @@ is required. Frigate can run on another machine.
    installer password, Home Assistant login, or a cloud/reverse-proxy URL here.
    The bridge uses RTSP Basic authentication on the local network; do not expose
    the port directly to the internet.
-5. On the separate Frigate machine, merge the
-   [example configuration](examples/frigate.yaml) and replace its placeholders
-   privately. Its `127.0.0.1:8554` address refers to **Frigate's** own go2rtc
-   restream, while the source URL points to **Home Assistant**. See the official
-   [Frigate restream documentation](https://docs.frigate.video/configuration/restream/).
+
+This fallback blocked Comelit app live viewing in testing. Use the native entrance
+source above for Frigate on the tested installation.
 
 A viewer starts the camera session; enabled-but-idle HA does not. Multiple viewers
 share one upstream video session. When the last viewer leaves, the bridge releases
@@ -98,7 +170,7 @@ a new session. This is not yet a guarantee of uninterrupted 24/7 recording.
 The example starts with recording and object detection off, but still requests
 video continuously. For on-demand-only testing, configure only the `go2rtc.streams`
 section and open it with a viewer. Physical doorbell-call coexistence still needs a
-coordinated daytime test. This implementation never sends microphone audio, answers
+coordinated daytime test. This fallback never sends microphone audio, answers
 incoming calls, or operates an actuator.
 
 Home Assistant's built-in [stream integration](https://www.home-assistant.io/integrations/stream/)
@@ -124,7 +196,7 @@ show_state: false
 
 Use the entity ID shown in your installation if it differs. No stream password
 belongs in the dashboard card. Native HA playback uses HLS, with normal buffering;
-this is live viewing, not yet a two-way video-call interface.
+use the separate call card above for experimental talk-back.
 
 Camera snapshots and live cards request video on demand. Opening a dashboard that
 shows the camera may therefore start the entrance session. Home Assistant may keep
@@ -263,4 +335,6 @@ The video transport is adapted from
 `4c1cba401030c705132174e60fb3886f667a442f` (MIT, Copyright 2026 Jorge Lima).
 Its license, provenance and local modifications are retained in
 [the vendor directory](custom_components/comelit_local/vendor/README.md).
-The wrapper restricts this transport to receive-only entrance video.
+The video wrapper restricts this transport to receive-only entrance video.
+The separate call wrapper supports explicit inbound answering and microphone audio;
+its Apache-2.0 protocol provenance is documented in [CALL_PROTOCOL.md](CALL_PROTOCOL.md).
