@@ -5,7 +5,8 @@ focused on the Comelit 1456B Multi-User Gateway.
 
 ## Current functionality
 
-- Add a gateway using its IP address, ViP TCP port and an existing user token.
+- Find a gateway on the local network, or enter its IP address and ViP TCP port.
+- Connect using an existing dedicated user token.
 - Redeem a manually generated activation code for a separate Home Assistant user.
 - Validate authentication and read the gateway configuration before completing setup.
 - Register the gateway as a device, with clear connection and authentication errors.
@@ -29,9 +30,20 @@ redeems a code for the slot prepared manually in the gateway web interface.
 3. Disable any existing integration or test instance using the same token. A separate
    dedicated development user has its own token and avoids sharing that identity.
 4. Go to **Settings → Devices & services → Add integration → Comelit Local**.
-5. Choose **Use an existing token** or **Use an activation code**.
-6. Enter the gateway IP address (without `http://`), the ViP TCP port (normally
-   `64100`), and the selected credential. For activation, enter a device name too.
+5. Wait for the local search, then select the detected gateway or **Enter an IP
+   address manually**. Manual setup accepts an IP address (without `http://`) and
+   the ViP TCP port (normally `64100`).
+6. Choose **Use an existing token** or **Use a pairing / activation code**.
+7. Enter the selected credential. For activation, enter a device name too.
+
+Discovery runs only when opening setup, without credentials or protocol commands.
+It checks TCP `64100` and a matching public Comelit login page on port `8080`,
+then asks the user to select a candidate. It does not claim a specific gateway model.
+
+The search is limited to enabled private IPv4 interfaces, their local `/24` (or
+smaller) subnets, at most 512 addresses and ten seconds. Devices across VLANs,
+elsewhere on a larger subnet, using IPv6 or custom ports may require manual entry.
+A network timeout or no results does not prevent manual setup.
 
 The web administration port, normally `8080`, is not the ViP port.
 The domain is `comelit_local`, separate from `comelit_intercom`.
@@ -76,9 +88,10 @@ user named **Home Assistant Dev**, leaving the production Home Assistant user in
 3. Set the unused slot to **Apps**, name it **Home Assistant Dev** (or another clear
    name), and make sure it is enabled.
 4. Click **Generate activation code** for that slot.
-5. In Home Assistant, add **Comelit Local → Use an activation code**. Enter the
-   gateway IP, ViP port `64100`, the code shown for the new slot, and the same device
-   name. Enter the code directly into Home Assistant, not into an issue or log.
+5. In Home Assistant, add **Comelit Local**, select the detected gateway (or enter
+   its address manually), then choose **Use a pairing / activation code**. Enter
+   the code shown for the new slot and the same device name. Enter the code directly
+   into Home Assistant, not into an issue or log.
 6. The integration redeems the code over ViP and saves the returned token. The slot
    should become **Activated**. Home Assistant then reads the gateway configuration
    and registers the gateway device.
@@ -108,15 +121,18 @@ scripts/develop
 Setup installs Python 3.14 and Home Assistant 2026.6.4 into `.ha-venv` using uv.
 It leaves system Python unchanged. The local instance is available at
 **http://127.0.0.1:8123**. Complete its onboarding to create a local test account.
-The supplied configuration binds to loopback and does not enable automatic device
-discovery. It is separate from the household Home Assistant installation.
+The supplied configuration binds to loopback and does not enable background device
+discovery. Comelit Local performs its bounded gateway search only when adding the
+integration. It is separate from the household Home Assistant installation.
 
 The first startup downloads Home Assistant frontend dependencies. On Debian/Ubuntu,
 `libturbojpeg0` is an optional native dependency for faster camera snapshots; the
 dev container includes it. No video feature depends on it in this version.
 
 `scripts/develop` links the repository's `custom_components` folder into `config/`.
-Restart the local instance after Python code changes. Stop it with Ctrl+C.
+Restart the local instance after Python code changes. After translation or setup-menu
+changes, refresh the browser with Ctrl+Shift+R and start a new setup dialog to clear
+stale frontend translations. Stop the instance with Ctrl+C.
 Configuration, tokens, logs, virtual environments and local account data are ignored
 by Git. Do not run the production and development integrations with the same token
 at the same time.

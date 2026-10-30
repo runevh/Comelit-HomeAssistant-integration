@@ -20,30 +20,45 @@
         }
       },
       "token": {
-        "title": "Comelit Local",
-        "description": "Enter the gateway IP address and a dedicated Home Assistant user token. Stop any other integration using the same token before connecting. See the README for token instructions. This version adds the gateway only; buttons, ring events and video come later.",
+        "title": "Use an existing token",
+        "description": "Enter the token for a dedicated Home Assistant user. Stop any other integration using that same token first.",
         "data": {
-          "host": "Gateway IP address",
-          "port": "ViP TCP port",
           "token": "User token"
         }
       },
-      "user": {
-        "title": "Comelit Local",
-        "description": "Connect using an existing dedicated token or a new activation code from the gateway.",
-        "menu_options": {
-          "token": "Use an existing token",
-          "activation": "Use an activation code"
-        }
-      },
       "activation": {
-        "title": "Activate a dedicated Home Assistant user",
+        "title": "Use a pairing / activation code",
         "description": "In the Comelit web interface, configure an unused user slot as Apps, give it a name (for example Home Assistant Dev), and generate an activation code. Enter that code here. Leave existing activated users unchanged. The token will be saved automatically; gateway configuration will then be loaded.",
         "data": {
-          "host": "Gateway IP address",
-          "port": "ViP TCP port",
-          "activation_code": "Activation code",
+          "activation_code": "Pairing / activation code",
           "description": "Device name"
+        }
+      },
+      "user": {
+        "title": "Find a Comelit gateway",
+        "description": "Searching the local network\u2026"
+      },
+      "gateway": {
+        "title": "Choose a gateway",
+        "description": "Found {count} gateway(s) on the local network. Select one, or enter an IP address manually. Devices on other networks or custom ports may need manual setup.",
+        "data": {
+          "gateway": "Gateway"
+        }
+      },
+      "manual": {
+        "title": "Enter a gateway address",
+        "description": "Enter the gateway IP address and ViP port. The default ViP port is 64100.",
+        "data": {
+          "host": "Gateway IP address",
+          "port": "ViP TCP port"
+        }
+      },
+      "authentication": {
+        "title": "Connect to your gateway",
+        "description": "Gateway: {host}. Choose how to connect.",
+        "menu_options": {
+          "token": "Use an existing token",
+          "activation": "Use a pairing / activation code"
         }
       }
     },

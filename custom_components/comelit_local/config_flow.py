@@ -21,26 +21,35 @@ from .client import (
     validate_token,
 )
 from .const import CONF_TOKEN, DEFAULT_PORT, DOMAIN
+from .discovery import async_discover_gateways
 
 _MAX_CODE_LENGTH = 64
 
 
-def _schema(defaults: dict[str, Any], *, activation: bool = False) -> vol.Schema:
-    fields = {
+def _connection_schema(defaults: dict[str, Any]) -> dict:
+    return {
         vol.Required(CONF_HOST, default=defaults.get(CONF_HOST, "")): str,
         vol.Required(CONF_PORT, default=defaults.get(CONF_PORT, DEFAULT_PORT)): vol.All(
             vol.Coerce(int), vol.Range(min=1, max=65535)
         ),
-        vol.Required(
-            "activation_code" if activation else CONF_TOKEN
-        ): selector.TextSelector(
-            selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
-        ),
     }
-    if activation:
-        fields[vol.Required("description", default="Home Assistant")] = vol.All(
-            str, vol.Length(min=1, max=64)
+
+
+def _schema(
+    defaults: dict[str, Any], *, activation: bool = False, connection: bool = True
+) -> vol.Schema:
+    fields = _connection_schema(defaults) if connection else {}
+    fields[vol.Required("activation_code" if activation else CONF_TOKEN)] = (
+        selector.TextSelector(
+            selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
         )
+    )
+    if activation:
+        fields[
+            vol.Required(
+                "description", default=defaults.get("description", "Home Assistant")
+            )
+        ] = vol.All(str, vol.Length(min=1, max=64))
     return vol.Schema(fields)
 
 
@@ -49,6 +58,11 @@ class ComelitLocalConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
     _connection: tuple[str, int] | None = None
+
+    def __init__(self) -> None:
+        """Keep discovered and selected gateways scoped to this flow."""
+        self._gateways: list[str] = []
+        self._gateway: dict[str, Any] = {}
 
     def is_matching(self, other_flow: Self) -> bool:
         """Prevent competing setup/activation flows for the same gateway."""
@@ -60,21 +74,89 @@ class ComelitLocalConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self,
         user_input: dict[str, Any] | None = None,  # noqa: ARG002 - HA signature
     ) -> config_entries.ConfigFlowResult:
-        """Choose an existing token or a manually generated activation code."""
+        """Search the local network before requesting any credentials."""
+        self._gateways = await async_discover_gateways(self.hass)
+        return await self.async_step_gateway()
+
+    async def async_step_gateway(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Let the user select a detected gateway or enter an address manually."""
+        if user_input is not None:
+            selected = user_input["gateway"]
+            if selected == "manual":
+                return await self.async_step_manual()
+            self._select_gateway(selected, DEFAULT_PORT)
+            return await self.async_step_authentication()
+        options = [
+            {"value": host, "label": f"Comelit gateway — {host}"}
+            for host in self._gateways
+        ]
+        options.append({"value": "manual", "label": "Enter an IP address manually"})
+        return self.async_show_form(
+            step_id="gateway",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        "gateway",
+                        default=self._gateways[0] if self._gateways else "manual",
+                    ): selector.SelectSelector(
+                        selector.SelectSelectorConfig(options=options)
+                    )
+                }
+            ),
+            description_placeholders={"count": str(len(self._gateways))},
+        )
+
+    async def async_step_manual(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Accept an explicit IP address and optional custom ViP port."""
+        errors = {}
+        if user_input is not None:
+            try:
+                host = str(ip_address(user_input[CONF_HOST].strip()))
+            except ValueError:
+                errors[CONF_HOST] = "invalid_host"
+            else:
+                self._select_gateway(host, user_input[CONF_PORT])
+                return await self.async_step_authentication()
+        return self.async_show_form(
+            step_id="manual",
+            data_schema=vol.Schema(_connection_schema(user_input or {})),
+            errors=errors,
+        )
+
+    def _select_gateway(self, host: str, port: int) -> None:
+        self._async_abort_entries_match({CONF_HOST: host, CONF_PORT: port})
+        self._check_in_progress(host, port)
+        self._gateway = {CONF_HOST: host, CONF_PORT: port}
+
+    async def async_step_authentication(
+        self,
+        user_input: dict[str, Any] | None = None,  # noqa: ARG002 - HA signature
+    ) -> config_entries.ConfigFlowResult:
+        """Choose token or pairing code only after a gateway has been selected."""
         return self.async_show_menu(
-            step_id="user", menu_options=["token", "activation"]
+            step_id="authentication",
+            menu_options=["token", "activation"],
+            description_placeholders={"host": self._gateway[CONF_HOST]},
         )
 
     async def async_step_token(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Set up using an existing dedicated token."""
+        if user_input is not None:
+            user_input = {**user_input, **self._gateway}
         return await self._async_configure("token", user_input)
 
     async def async_step_activation(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Exchange an activation code and immediately save the returned token."""
+        if user_input is not None:
+            user_input = {**user_input, **self._gateway}
         errors = {}
         if user_input is not None:
             try:
@@ -116,7 +198,7 @@ class ComelitLocalConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         )
         return self.async_show_form(
             step_id="activation",
-            data_schema=_schema(user_input or {}, activation=True),
+            data_schema=_schema(user_input or {}, activation=True, connection=False),
             errors=errors,
         )
 
@@ -198,5 +280,7 @@ class ComelitLocalConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     # Do not turn an IP address or a secret token into a unique ID.
                     return self.async_create_entry(title=f"Comelit ({host})", data=data)
         return self.async_show_form(
-            step_id=step_id, data_schema=_schema(defaults), errors=errors
+            step_id=step_id,
+            data_schema=_schema(defaults, connection=step_id != "token"),
+            errors=errors,
         )

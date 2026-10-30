@@ -7,6 +7,7 @@ import pytest
 from homeassistant.config_entries import SOURCE_REAUTH, SOURCE_RECONFIGURE, SOURCE_USER
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.translation import async_get_translations
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.comelit_local.client import (
@@ -27,16 +28,31 @@ INFO = GatewayInfo("00000001", 8, {"actuator-address-book": 3})
 CLIENT = "custom_components.comelit_local.client.GatewayClient.async_get_configuration"
 
 
-async def start_token_flow(hass, data=None):
+async def select_manual_gateway(hass, data=None):
+    data = data or DATA
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
-    assert result["type"] == FlowResultType.MENU
+    assert result["step_id"] == "gateway"
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"gateway": "manual"}
+    )
+    return await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"host": data["host"], "port": data["port"]}
+    )
+
+
+async def start_token_flow(hass, data=None):
+    result = await select_manual_gateway(hass, data)
+    if result["type"] != FlowResultType.MENU:
+        return result
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {"next_step_id": "token"}
     )
     if data is not None:
-        result = await hass.config_entries.flow.async_configure(result["flow_id"], data)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"token": data["token"]}
+        )
     return result
 
 
@@ -44,7 +60,9 @@ async def test_setup_creates_entry_and_device(hass):
     with patch(CLIENT, AsyncMock(return_value=INFO)):
         result = await start_token_flow(hass)
         assert result["type"] == FlowResultType.FORM
-        result = await hass.config_entries.flow.async_configure(result["flow_id"], DATA)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"token": DATA["token"]}
+        )
         assert result["type"] == FlowResultType.CREATE_ENTRY
         await hass.async_block_till_done()
     entry = result["result"]
@@ -166,14 +184,20 @@ ACTIVATION_DATA = {
 
 
 async def start_activation_flow(hass, data=None):
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": SOURCE_USER}
-    )
+    result = await select_manual_gateway(hass, data)
+    if result["type"] != FlowResultType.MENU:
+        return result
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {"next_step_id": "activation"}
     )
     if data is not None:
-        result = await hass.config_entries.flow.async_configure(result["flow_id"], data)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {
+                "activation_code": data["activation_code"],
+                "description": data["description"],
+            },
+        )
     return result
 
 
@@ -245,3 +269,56 @@ async def test_activation_input_validation(hass, updates, field, error):
         result = await start_activation_flow(hass, {**ACTIVATION_DATA, **updates})
     assert result["errors"] == {field: error}
     activate.assert_not_called()
+
+
+async def test_detected_gateway_precedes_credential_choice(hass):
+    with patch(
+        "custom_components.comelit_local.config_flow.async_discover_gateways",
+        AsyncMock(return_value=["192.168.1.200"]),
+    ) as discover:
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": SOURCE_USER}
+        )
+        assert result["step_id"] == "gateway"
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"gateway": "192.168.1.200"}
+        )
+        assert result["step_id"] == "authentication"
+        assert result["menu_options"] == ["token", "activation"]
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"next_step_id": "token"}
+        )
+        assert {key.schema for key in result["data_schema"].schema} == {"token"}
+        with patch(CLIENT, AsyncMock(return_value=INFO)):
+            result = await hass.config_entries.flow.async_configure(
+                result["flow_id"], {"token": DATA["token"]}
+            )
+            await hass.async_block_till_done()
+    assert result["result"].data["host"] == "192.168.1.200"
+    discover.assert_awaited_once()
+
+
+async def test_empty_discovery_keeps_manual_option(hass):
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    assert result["step_id"] == "gateway"
+    assert result["description_placeholders"] == {"count": "0"}
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"gateway": "manual"}
+    )
+    assert result["step_id"] == "manual"
+
+
+async def test_menu_translations_are_served_by_home_assistant(hass):
+    translations = await async_get_translations(hass, "en", "config", {DOMAIN})
+    prefix = "component.comelit_local.config.step."
+    assert (
+        translations[prefix + "authentication.menu_options.token"]
+        == "Use an existing token"
+    )
+    assert (
+        translations[prefix + "authentication.menu_options.activation"]
+        == "Use a pairing / activation code"
+    )
+    assert translations[prefix + "gateway.data.gateway"] == "Gateway"
