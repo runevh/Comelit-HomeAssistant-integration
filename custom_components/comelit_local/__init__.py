@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_PORT, EVENT_HOMEASSISTANT_STOP
+from homeassistant.const import CONF_HOST, CONF_PORT, EVENT_HOMEASSISTANT_STOP, Platform
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 
@@ -89,11 +89,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ComelitConfigEntry) -> b
         name="Comelit gateway",
         manufacturer="Comelit",
     )
+    await hass.config_entries.async_forward_entry_setups(entry, [Platform.CAMERA])
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ComelitConfigEntry) -> bool:  # noqa: ARG001
+async def async_unload_entry(hass: HomeAssistant, entry: ComelitConfigEntry) -> bool:
     """Close RTSP listeners and release any active video session."""
-    if entry.runtime_data.bridge:
+    unloaded = await hass.config_entries.async_unload_platforms(
+        entry, [Platform.CAMERA]
+    )
+    if unloaded and entry.runtime_data.bridge:
         await entry.runtime_data.bridge.stop()
-    return True
+    return unloaded

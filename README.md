@@ -11,13 +11,14 @@ focused on the Comelit 1456B Multi-User Gateway.
 - Validate authentication and read the gateway configuration before completing setup.
 - Register the gateway as a device, with clear connection and authentication errors.
 - Host an optional authenticated RTSP video bridge for remote viewers such as Frigate.
+- View named entrance cameras and snapshots directly in Home Assistant.
 - Reconfigure the connection or replace a rejected token.
 - Download diagnostics containing address-book counts without credentials or addresses.
 
 This video feature branch adds an on-demand RTSP bridge inside Home Assistant.
 The 1456B successfully supplied H.264 entrance video at 320×240 in live tests.
-Gate controls remain on their separate feature branch. Ring events, a native HA
-camera entity, call answering and microphone audio are not implemented here.
+Gate controls remain on their separate feature branch. Ring events, call answering
+and microphone audio are not implemented here.
 Continuous viewing and coexistence during a real doorbell call remain experimental.
 
 Automatic user-slot provisioning is deferred. Setup never creates user slots,
@@ -102,8 +103,33 @@ incoming calls, or operates an actuator.
 
 Home Assistant's built-in [stream integration](https://www.home-assistant.io/integrations/stream/)
 proxies camera sources to HLS for browser playback; it does not replace this Comelit
-RTSP bridge. A native camera/call UI can later consume the same bridge. At present,
-use an RTSP player or Frigate to view it.
+RTSP bridge. The integration now creates a native **camera entity for each entrance**
+when the bridge is enabled. Home Assistant reads the authenticated loopback feed,
+so local viewing also works with network access disabled. Frigate and HA share the
+same upstream Comelit video session.
+
+### View the camera in Home Assistant
+
+After enabling the RTSP bridge, open **Settings → Devices & services → Comelit Local**,
+select the gateway, and open the named camera (for example **Buitenpost**). You can
+also add a Picture Entity card to a dashboard:
+
+```yaml
+type: picture-entity
+entity: camera.comelit_gateway_buitenpost
+name: Buitenpost
+camera_view: live
+show_state: false
+```
+
+Use the entity ID shown in your installation if it differs. No stream password
+belongs in the dashboard card. Native HA playback uses HLS, with normal buffering;
+this is live viewing, not yet a two-way video-call interface.
+
+Camera snapshots and live cards request video on demand. Opening a dashboard that
+shows the camera may therefore start the entrance session. Home Assistant may keep
+its stream warm briefly after the last browser viewer leaves. Removing/disabling
+the integration stops its HA stream workers before closing the RTSP bridge.
 
 Diagnostics report listener state, viewer count, active-session state, sessions
 started and the last error **type**. They exclude stream credentials, gateway tokens,
@@ -187,8 +213,12 @@ discovery. Comelit Local performs its bounded gateway search only when adding th
 integration. It is separate from the household Home Assistant installation.
 
 The first startup downloads Home Assistant frontend dependencies. On Debian/Ubuntu,
-`libturbojpeg0` is an optional native dependency for faster camera snapshots; the
-dev container includes it. No video feature depends on it in this version.
+Home Assistant's snapshot pipeline needs the native TurboJPEG library (`libturbojpeg`
+on Ubuntu 24.04; `libturbojpeg0` on some other releases). The dev container includes
+it. The development launcher also detects a project-local copy at
+`.local/native/usr/lib/<architecture>-linux-gnu/libturbojpeg.so.0`, avoiding a system
+installation when necessary. HLS playback can work without it, but HA snapshots
+need the library.
 
 `scripts/develop` links the repository's `custom_components` folder into `config/`.
 Restart the local instance after Python code changes. After translation or setup-menu

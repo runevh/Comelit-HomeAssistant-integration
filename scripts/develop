@@ -2,6 +2,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export PYTHONPATH="${PWD}${PYTHONPATH:+:${PYTHONPATH}}"
+# Optional project-local JPEG library for Core development without a system install.
+comelit_native_lib="${PWD}/.local/native/usr/lib/$(uname -m)-linux-gnu"
+if [[ -f "${comelit_native_lib}/libturbojpeg.so.0" ]]; then
+    export LD_LIBRARY_PATH="${comelit_native_lib}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+fi
 # Home Assistant discovers custom integrations below its configuration directory.
 if [[ ! -e config/custom_components ]]; then
     ln -s ../custom_components config/custom_components
