@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.const import CONF_HOST, CONF_PORT, Platform
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 
@@ -42,12 +42,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ComelitConfigEntry) -> b
         name="Comelit gateway",
         manufacturer="Comelit",
     )
+    await hass.config_entries.async_forward_entry_setups(entry, [Platform.BUTTON])
     return True
 
 
-async def async_unload_entry(
-    hass: HomeAssistant,  # noqa: ARG001 - Home Assistant signature
-    entry: ComelitConfigEntry,  # noqa: ARG001 - Home Assistant signature
-) -> bool:
-    """Unload the integration; setup leaves no sockets or background tasks."""
-    return True
+async def async_unload_entry(hass: HomeAssistant, entry: ComelitConfigEntry) -> bool:
+    """Remove the buttons; each press owns and closes its TCP connection."""
+    return await hass.config_entries.async_unload_platforms(entry, [Platform.BUTTON])

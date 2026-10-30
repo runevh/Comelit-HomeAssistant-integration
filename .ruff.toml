@@ -28,4 +28,6 @@ max-complexity = 25
 # Fixed protocol messages are intentionally kept next to their validation checks.
 "custom_components/comelit_local/client.py" = ["EM101", "TRY003", "PLR2004", "N818"]
 "custom_components/comelit_local/__init__.py" = ["EM101", "TRY003"]
+"custom_components/comelit_local/ctp.py" = ["EM101", "TRY003", "PLR2004", "SLF001"]
+"custom_components/comelit_local/actuator.py" = ["EM101", "TRY003", "PLR2004", "SLF001"]
 "tests/*" = ["ANN", "D", "S101", "S105", "S106", "PLR2004", "SLF001", "SIM117"]

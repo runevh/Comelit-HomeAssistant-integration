@@ -10,13 +10,14 @@ focused on the Comelit 1456B Multi-User Gateway.
 - Redeem a manually generated activation code for a separate Home Assistant user.
 - Validate authentication and read the gateway configuration before completing setup.
 - Register the gateway as a device, with clear connection and authentication errors.
+- Discover configured gate/garage actuators and expose named buttons.
 - Reconfigure the connection or replace a rejected token.
 - Download diagnostics containing address-book counts without credentials or addresses.
 
-This version adds the gateway device only. It does not yet create actuator buttons,
-listen for rings, or provide video/audio. Video support on the 1456B remains
-unverified. There is no persistent connection or live connection-status sensor yet;
-configuration is read during setup/reload and the connection is then closed.
+Actuator control is experimental and awaits a coordinated physical test on the
+1456B. Ring events and video/audio are not available yet. There is no persistent
+connection or live connection-status sensor: configuration is read during
+setup/reload, and each button press uses its own authenticated connection.
 
 Automatic user-slot provisioning is deferred. Setup never creates user slots,
 generates activation codes, or resets existing users. The activation-code option
@@ -48,6 +49,38 @@ A network timeout or no results does not prevent manual setup.
 The web administration port, normally `8080`, is not the ViP port.
 The domain is `comelit_local`, separate from `comelit_intercom`.
 This repository has not been submitted to the HACS default catalog.
+
+## Actuator buttons
+
+Actuators are read from `actuator-address-book`, separately from door relays.
+For the target installation this creates **1 Vleugel**, **2 Vleugel**, and
+**Sectionele poort**, grouped under the gateway device. Entity identities use the
+target address, module and output, so renaming or reordering entries does not
+create new buttons. Reload the integration after changing the gateway directory.
+
+Pressing a button requests one operation; it does **not** mean "open", "close",
+or confirm a physical position. The controller determines whether the output
+opens, stops or closes the gate. Position sensing can be supplied independently,
+for example by camera analysis using Frigate; cameras are not required by this
+integration and no camera-based position estimation is implemented here.
+
+Only the evidenced **module 255 / output 1** actuator profile is enabled. Other
+valid entries remain visible but pressing them reports an unsupported-profile
+error without connecting. The command uses actuator opcode `0x0020`, not the
+door-relay command. CTP registration and reply handling follow the public protocol
+references; receiving a successful protocol result is not proof of movement.
+Compatibility of the complete exchange with this 1456B is still unverified.
+
+Commands are never automatically retried, and overlapping presses on the same
+gateway are rejected rather than queued. A lost or unrecognized reply after
+submission reports an **uncertain result**: check the gate before pressing again.
+A rejected token starts Home Assistant's reauthentication flow. Setup, discovery,
+reload and diagnostics never operate an actuator.
+
+For the first physical test, have someone at the gate, confirm the selected target,
+press once, and compare the observed movement with the Home Assistant result.
+Also verify that the regular Comelit app and indoor units still work. Do not run
+unattended actuator tests or treat the three buttons as position sensors.
 
 ## Getting a token
 
@@ -167,4 +200,12 @@ The setup client is independently implemented from the observed ViP framing and
 configuration exchange. Protocol references include
 [mnestrud/comelit-man](https://github.com/mnestrud/comelit-man) (Apache-2.0) and
 [madchicken/comelit-client](https://github.com/madchicken/comelit-client).
-No implementation code from those repositories is bundled here.
+The CTP packet codec is adapted from
+[jfmlima/comelit-vip](https://github.com/jfmlima/comelit-vip) (MIT, Jorge Lima);
+its notice is included in
+[CTP_LICENSE](custom_components/comelit_local/CTP_LICENSE). The adaptation uses
+bounded transactions and fixed error messages, with no persistent call listener.
+Actuator command bytes follow the observed `0x0020 / ff01` format documented by
+madchicken/comelit-client and mnestrud/comelit-man (both Apache-2.0), without
+copying their implementation. No user provisioning, call answering or video
+session is performed by a button press.
