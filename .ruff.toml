@@ -28,4 +28,7 @@ max-complexity = 25
 # Fixed protocol messages are intentionally kept next to their validation checks.
 "custom_components/comelit_local/client.py" = ["EM101", "TRY003", "PLR2004", "N818"]
 "custom_components/comelit_local/__init__.py" = ["EM101", "TRY003"]
+# Temporary probe uses dynamically imported, revision-pinned reference types.
+"experiments/video_probe.py" = ["ANN", "EM101", "TRY003", "PLR2004"]
+"experiments/h264.py" = ["PLR2004"]
 "tests/*" = ["ANN", "D", "S101", "S105", "S106", "PLR2004", "SLF001", "SIM117"]
