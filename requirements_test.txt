@@ -1,2 +1,6 @@
 -r requirements_dev.txt
 pytest-homeassistant-custom-component==0.13.340
+# Camera/stream requirements for HA 2026.6.4; pytest disables auto-installation.
+PyTurboJPEG==1.8.3
+av==16.0.1
+numpy==2.3.2
