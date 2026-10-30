@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-
-set -e
-
+set -euo pipefail
 cd "$(dirname "$0")/.."
-
-# Install common requirements (pip) first so any pip upgrade completes
-# before the rest of the dependencies are installed.
-python3 -m pip install --requirement requirements_common.txt
-python3 -m pip install --requirement requirements_dev.txt
+# Bootstrap uv in a local environment, leaving system Python untouched.
+if [[ ! -x .venv/bin/uv ]]; then
+    python3 -m venv .venv
+    .venv/bin/python -m pip install uv
+fi
+.venv/bin/uv venv --python 3.14 --allow-existing .ha-venv
+.venv/bin/uv pip install --python .ha-venv/bin/python -r requirements_dev.txt

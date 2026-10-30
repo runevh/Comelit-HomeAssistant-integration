@@ -1,13 +1,44 @@
 {
   "config": {
-    "abort": {
-      "not_implemented": "Comelit Local is a development scaffold. Gateway setup is not implemented yet."
-    },
     "step": {
       "user": {
         "title": "Comelit Local",
-        "description": "Set up the Comelit Local integration."
+        "description": "Enter the gateway IP address and a dedicated Home Assistant user token. Stop any other integration using the same token before connecting. See the README for token instructions. This version adds the gateway only; buttons, ring events and video come later.",
+        "data": {
+          "host": "Gateway IP address",
+          "port": "ViP TCP port",
+          "token": "User token"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Comelit Local",
+        "description": "Enter the gateway IP address and a dedicated Home Assistant user token. Stop any other integration using the same token before connecting. See the README for token instructions. This version adds the gateway only; buttons, ring events and video come later.",
+        "data": {
+          "host": "Gateway IP address",
+          "port": "ViP TCP port",
+          "token": "User token"
+        }
+      },
+      "reconfigure": {
+        "title": "Comelit Local",
+        "description": "Enter the gateway IP address and a dedicated Home Assistant user token. Stop any other integration using the same token before connecting. See the README for token instructions. This version adds the gateway only; buttons, ring events and video come later.",
+        "data": {
+          "host": "Gateway IP address",
+          "port": "ViP TCP port",
+          "token": "User token"
+        }
       }
+    },
+    "error": {
+      "invalid_host": "Enter a valid gateway IP address, without a URL or port.",
+      "cannot_connect": "Cannot connect to the gateway. Check its IP address, ViP port and network connection.",
+      "invalid_auth": "The token is invalid or was rejected. Enter the 32-character hexadecimal token for a dedicated Home Assistant user.",
+      "invalid_response": "The gateway returned an unsupported response. Check the ViP port and gateway compatibility."
+    },
+    "abort": {
+      "already_configured": "This gateway is already configured.",
+      "reauth_successful": "Authentication updated successfully.",
+      "reconfigure_successful": "Gateway settings updated successfully."
     }
   }
 }

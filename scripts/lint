@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
-
-set -e
-
+set -euo pipefail
 cd "$(dirname "$0")/.."
-
-ruff format .
-ruff check . --fix
+.ha-venv/bin/ruff format .
+.ha-venv/bin/ruff check . --fix

@@ -1,12 +1,18 @@
-# https://www.home-assistant.io/integrations/default_config/
-default_config:
-
-# https://www.home-assistant.io/integrations/homeassistant/
+# Local development instance: no discovery of household devices.
 homeassistant:
-  debug: true
-
-# https://www.home-assistant.io/integrations/logger/
+  name: Comelit Development
+  latitude: 0
+  longitude: 0
+  elevation: 0
+  unit_system: metric
+  time_zone: Europe/Brussels
+http:
+  server_host: 127.0.0.1
+  server_port: 8123
+frontend:
+config:
+api:
 logger:
-  default: info
+  default: warning
   logs:
-    custom_components.comelit_local: debug
+    custom_components.comelit_local: info

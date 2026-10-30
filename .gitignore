@@ -23,3 +23,6 @@ config/*
 .env.*
 secrets.yaml
 *token*.txt
+
+.ha-venv/
+.local/
