@@ -3,7 +3,7 @@
     "step": {
       "reauth_confirm": {
         "title": "Comelit Local",
-        "description": "Enter the gateway IP address and a dedicated Home Assistant user token. Stop any other integration using the same token before connecting. See the README for token instructions. This version adds the gateway only; buttons, ring events and video come later.",
+        "description": "Enter the gateway IP address and a dedicated Home Assistant user token. Stop any other integration using the same token before connecting. See the README for token instructions. Configured actuators appear as buttons. Ring events and video are not available yet.",
         "data": {
           "host": "Gateway IP address",
           "port": "ViP TCP port",
@@ -12,7 +12,7 @@
       },
       "reconfigure": {
         "title": "Comelit Local",
-        "description": "Enter the gateway IP address and a dedicated Home Assistant user token. Stop any other integration using the same token before connecting. See the README for token instructions. This version adds the gateway only; buttons, ring events and video come later.",
+        "description": "Enter the gateway IP address and a dedicated Home Assistant user token. Stop any other integration using the same token before connecting. See the README for token instructions. Configured actuators appear as buttons. Ring events and video are not available yet.",
         "data": {
           "host": "Gateway IP address",
           "port": "ViP TCP port",
@@ -77,6 +77,29 @@
       "reconfigure_successful": "Gateway settings updated successfully.",
       "already_in_progress": "Another setup flow for this gateway is already in progress. Finish or cancel that flow first.",
       "activation_uncertain": "No usable token was received, but the gateway may have activated the user. Check that slot in the Comelit web interface before retrying. If it is activated, recover its token or deliberately reset only this new test user; do not reset an existing phone or Home Assistant user."
+    }
+  },
+  "exceptions": {
+    "actuator_busy": {
+      "message": "Another actuator command is in progress. Wait and check the gate before pressing again."
+    },
+    "actuator_cannot_connect": {
+      "message": "Cannot connect to the gateway or prepare the actuator session. No actuator command was submitted."
+    },
+    "actuator_invalid_auth": {
+      "message": "The gateway rejected the token. Reauthenticate Comelit Local."
+    },
+    "actuator_rejected": {
+      "message": "The gateway rejected the actuator command."
+    },
+    "actuator_uncertain": {
+      "message": "The command may have operated the gate, but confirmation was lost. Check the gate before retrying. No retry was sent."
+    },
+    "actuator_unsupported": {
+      "message": "This actuator profile is not supported yet. Only module 255, output 1 has a known command format."
+    },
+    "actuator_failed": {
+      "message": "The actuator command failed. Check the gate before retrying."
     }
   }
 }

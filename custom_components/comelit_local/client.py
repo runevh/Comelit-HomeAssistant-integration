@@ -2,7 +2,7 @@
 Minimal, short-lived ViP sessions for authentication and configuration.
 
 Wire format references: mnestrud/comelit-man and madchicken/comelit-client.
-This client never opens call, push, video, or actuator channels.
+Actuator control uses a separate, short-lived CTPP session; no call subscription.
 """
 
 from __future__ import annotations
@@ -53,6 +53,33 @@ class InvalidResponse(GatewayError):
     """The gateway returned an unsupported or malformed response."""
 
 
+class CommandUncertain(GatewayError):
+    """The actuator may have operated; never automatically retry."""
+
+
+class CommandRejected(GatewayError):
+    """The gateway explicitly rejected an actuator transaction."""
+
+
+class UnsupportedActuator(GatewayError):
+    """The configured actuator uses an unverified wire format."""
+
+
+@dataclass(frozen=True)
+class Actuator:
+    """An address-book target, never an inferred physical state."""
+
+    name: str = field(repr=False)
+    address: str = field(repr=False)
+    module: int
+    output: int
+
+    @property
+    def key(self) -> str:
+        """Stable identity independent of display name or directory order."""
+        return f"{self.address}_{self.module}_{self.output}"
+
+
 @dataclass(frozen=True)
 class GatewayInfo:
     """Validated configuration summary; no raw payloads or credentials."""
@@ -60,6 +87,7 @@ class GatewayInfo:
     apartment: str = field(repr=False)
     subaddress: int = field(repr=False)
     directory_counts: dict[str, int]
+    actuators: tuple[Actuator, ...] = field(default=(), repr=False)
 
 
 def validate_token(token: str) -> str:
@@ -94,7 +122,28 @@ def parse_configuration(response: dict[str, Any]) -> GatewayInfo:
         ):
             raise InvalidResponse("Invalid address book")
         counts[key] = len(directory)
-    return GatewayInfo(apartment, subaddress, counts)
+    actuators = {}
+    for item in parameters.get("actuator-address-book", []):
+        address = item.get("apt-address")
+        module = item.get("module-index")
+        output = item.get("output-index")
+        name = item.get("name")
+        if (
+            not isinstance(address, str)
+            or not _ADDRESS.fullmatch(address)
+            or type(module) is not int
+            or not 0 <= module <= 255
+            or type(output) is not int
+            or not 0 <= output <= 255
+            or not isinstance(name, str)
+            or not name.strip()
+        ):
+            raise InvalidResponse("Invalid actuator address book")
+        actuator = Actuator(name.strip(), address, module, output)
+        if actuator.key in actuators and actuators[actuator.key] != actuator:
+            raise InvalidResponse("Conflicting actuator entries")
+        actuators[actuator.key] = actuator
+    return GatewayInfo(apartment, subaddress, counts, tuple(actuators.values()))
 
 
 class GatewayClient:
@@ -200,16 +249,20 @@ class GatewayClient:
             raise InvalidResponse("Invalid frame header")
         return channel, await reader.readexactly(length)
 
-    async def _open_channel(
+    async def _open_channel(  # noqa: PLR0913 - wire channel-open fields
         self,
         reader: asyncio.StreamReader,
         writer: asyncio.StreamWriter,
         name: str,
         channel_type: int,
         request_id: int,
+        *,
+        extra: bytes = b"",
     ) -> int:
         body = struct.pack("<HHI", 0xABCD, 1, channel_type)
         body += name.encode("ascii") + struct.pack("<HB", request_id, 0)
+        if extra:
+            body += b"\0" + struct.pack("<I", len(extra) + 1) + extra + b"\0"
         await self._send(writer, 0, body)
         for _ in range(32):
             channel, response = await self._read(reader)

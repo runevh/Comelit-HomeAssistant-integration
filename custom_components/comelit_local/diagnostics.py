@@ -18,10 +18,10 @@ async def async_get_config_entry_diagnostics(
     info = getattr(entry, "runtime_data", None)
     return {
         "entry_state": entry.state.value,
-        "connection_mode": "configuration read on setup; no persistent connection",
+        "connection_mode": "configuration read on setup; short-lived actuator sessions",
         "directory_counts": info.directory_counts if info else None,
         "features": {
-            "actuators": False,
+            "actuators": True,
             "ring_events": False,
             "video": False,
             "audio": False,

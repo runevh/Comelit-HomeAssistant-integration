@@ -22,7 +22,15 @@ CONFIG = {
         "apt-address": "00000001",
         "apt-subaddress": 8,
         "user-parameters": {
-            "actuator-address-book": [{"name": "Gate"}] * 3,
+            "actuator-address-book": [
+                {
+                    "name": f"Gate {index}",
+                    "apt-address": f"0000100{index}",
+                    "module-index": 255,
+                    "output-index": 1,
+                }
+                for index in (1, 2, 3)
+            ],
             "opendoor-address-book": [],
             "entrance-address-book": [{"name": "Entrance"}],
         },
