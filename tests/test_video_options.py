@@ -16,6 +16,8 @@ from .test_config_flow import CLIENT, DATA
 
 INFO = GatewayInfo("00000001", 9, {}, (Entrance("Entrance", "00000101"),))
 OPTIONS = {
+    "calls_enabled": False,
+    "call_notifications": True,
     "rtsp_enabled": True,
     "rtsp_lan": False,
     "rtsp_port": 8557,
@@ -85,3 +87,29 @@ async def test_options_translations_are_available(hass):
     prefix = "component.comelit_local.options.step.init.data."
     assert translations[prefix + "rtsp_enabled"] == "Enable RTSP video bridge"
     assert translations[prefix + "rtsp_password"] == "Stream password"
+
+
+async def test_calls_conflict_with_bridge_but_accept_native_video(hass):
+    entry = MockConfigEntry(domain=DOMAIN, data=DATA)
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {**OPTIONS, "calls_enabled": True}
+    )
+    assert result["errors"]["base"] == "conflicting_connections"
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            **OPTIONS,
+            "calls_enabled": True,
+            "rtsp_enabled": False,
+            "native_rtsp_url": "rtsp://user:private@192.0.2.1/live",
+        },
+    )
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert "private" not in str(result["data_schema"])
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {**OPTIONS, "rtsp_enabled": False, "clear_native_rtsp": True}
+    )
+    assert "native_rtsp_url" not in entry.options

@@ -1,0 +1,19 @@
+# Add this as an automation after replacing the entry ID and mobile notify action.
+# Get entry_id from the doorbell event entity's attributes in Developer Tools.
+# The dashboard path must exist on this HA installation and use HTTPS on mobile.
+alias: Comelit doorbell notification
+triggers:
+  - trigger: event
+    event_type: comelit_local_doorbell
+    event_data:
+      entry_id: REPLACE_WITH_COMELIT_ENTRY_ID
+      event_type: ring
+actions:
+  - action: notify.mobile_app_REPLACE_WITH_PHONE
+    data:
+      title: Doorbell
+      message: Someone is at the entrance.
+      data:
+        url: /comelit-test/entrance
+        clickAction: /comelit-test/entrance
+mode: single

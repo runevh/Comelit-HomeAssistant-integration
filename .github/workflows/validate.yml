@@ -9,6 +9,7 @@ on:
       - main
   pull_request:
     branches:
+      - "feat/doorbell-video"
       - main
 
 permissions: {}

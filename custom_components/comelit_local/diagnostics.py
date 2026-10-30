@@ -18,15 +18,22 @@ async def async_get_config_entry_diagnostics(
     runtime = getattr(entry, "runtime_data", None)
     info = runtime.info if runtime else None
     bridge = runtime.bridge if runtime else None
+    calls = runtime.calls if runtime else None
     return {
         "entry_state": entry.state.value,
-        "connection_mode": "on-demand video" if bridge else "configuration only",
+        "connection_mode": "incoming calls"
+        if calls
+        else "on-demand video"
+        if bridge
+        else "configuration only",
+        "calls": calls.diagnostics() if calls else {"enabled": False},
         "rtsp": bridge.diagnostics() if bridge else {"enabled": False},
         "directory_counts": info.directory_counts if info else None,
         "features": {
             "actuators": False,
-            "ring_events": False,
-            "video": bool(bridge),
-            "audio": False,
+            "ring_events": bool(calls),
+            "video": bool(bridge or entry.options.get("native_rtsp_url")),
+            "call_audio_experimental": bool(calls),
+            "audio": bool(calls),
         },
     }

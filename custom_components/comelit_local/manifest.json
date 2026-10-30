@@ -6,13 +6,16 @@
   ],
   "config_flow": true,
   "dependencies": [
+    "http",
     "network",
-    "stream"
+    "persistent_notification",
+    "stream",
+    "websocket_api"
   ],
   "documentation": "https://github.com/runevh/Comelit-HomeAssistant-integration",
   "integration_type": "hub",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/runevh/Comelit-HomeAssistant-integration/issues",
   "requirements": [],
-  "version": "0.3.1"
+  "version": "0.4.0"
 }

@@ -75,3 +75,24 @@ async def test_snapshot_uses_ha_stream_and_unload_stops_it(hass):
     await camera.async_will_remove_from_hass()
     stream.stop.assert_awaited_once()
     assert camera.use_stream_for_stills
+
+
+async def test_native_camera_without_bridge_keeps_credentials_private(hass):
+    source = "rtsp://viewer:private-test-secret@192.0.2.20/live/h264/ch0"
+    entry = MockConfigEntry(
+        domain=DOMAIN, data=DATA, options={"native_rtsp_url": source}
+    )
+    entry.add_to_hass(hass)
+    with (
+        patch(CLIENT, AsyncMock(return_value=INFO)),
+        patch("custom_components.comelit_local.VideoBridge") as bridge,
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        entity = er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)[
+            0
+        ]
+        assert await async_get_stream_source(hass, entity.entity_id) == source
+        assert source not in str(hass.states.get(entity.entity_id).attributes)
+        bridge.assert_not_called()
+        assert await hass.config_entries.async_unload(entry.entry_id)

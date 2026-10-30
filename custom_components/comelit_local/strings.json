@@ -82,18 +82,24 @@
   "options": {
     "step": {
       "init": {
-        "title": "Entrance video / RTSP",
-        "description": "Enable an on-demand video stream hosted by Home Assistant. Username: comelit. Use a separate RTSP password (at least 12 characters); leave it blank to keep the existing password. Other devices use rtsp://comelit:PASSWORD@HOME_ASSISTANT_IP:PORT/comelit over TCP. Video remains active while a viewer such as Frigate is connected. Call coexistence and continuous recording are still experimental.",
+        "title": "Doorbell calls and video",
+        "description": "Enable incoming calls to receive doorbell events and use the experimental call card. For video alongside calls, enter the entrance\u2019s native RTSP URL; blank keeps the saved URL. The call-based RTSP bridge must be disabled when calls are enabled. Its separate stream password is preserved when blank.",
         "data": {
           "rtsp_enabled": "Enable RTSP video bridge",
           "rtsp_lan": "Allow viewers from other devices on the network",
           "rtsp_port": "RTSP port",
-          "rtsp_password": "Stream password"
+          "rtsp_password": "Stream password",
+          "calls_enabled": "Enable experimental incoming calls",
+          "call_notifications": "Show Home Assistant doorbell notifications",
+          "native_rtsp_url": "Native entrance RTSP URL (optional; blank keeps saved URL)",
+          "clear_native_rtsp": "Remove saved native RTSP URL"
         }
       }
     },
     "error": {
-      "password_required": "Enter a separate RTSP password of at least 12 characters."
+      "password_required": "Enter a separate RTSP password of at least 12 characters.",
+      "conflicting_connections": "Disable the RTSP video bridge when enabling calls. Use the entrance\u2019s native RTSP stream for Frigate and video.",
+      "invalid_rtsp": "Enter a valid rtsp:// URL."
     }
   }
 }

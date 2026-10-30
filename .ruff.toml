@@ -35,3 +35,8 @@ max-complexity = 25
 "experiments/h264.py" = ["PLR2004"]
 "custom_components/comelit_local/video.py" = ["EM101", "TRY003", "SLF001", "PLR2004"]
 "tests/*" = ["ANN", "D", "S101", "S105", "S106", "PLR2004", "SLF001", "SIM117"]
+
+# Inbound protocol adapter follows the same wire-level conventions as video.py.
+"custom_components/comelit_local/call_transport.py" = ["EM101", "TRY003", "SLF001", "PLR2004"]
+"custom_components/comelit_local/calls.py" = ["EM101", "TRY003", "SLF001", "PLR2004", "TRY301"]
+"custom_components/comelit_local/call_api.py" = ["EM101", "TRY003"]

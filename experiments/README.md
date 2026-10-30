@@ -76,3 +76,30 @@ The final 90-second run decoded 1,440 frames with no FFmpeg errors, including on
 upstream video-session renewal. After the client left, HA diagnostics reported zero
 viewers and no active camera session. This is a short compatibility test, not a
 24/7 stability or physical doorbell-call coexistence result.
+
+## Native entrance RTSP
+
+The call-based bridge prevented Comelit app live viewing in a user test. Stopping
+the development HA instance restored app viewing.
+
+Read-only SCAN/INFO discovery identified the separate entrance unit as hardware
+`D529`, application `Port`, model code `UviV`, firmware `1.9.3`. The retail model
+has not been confirmed. Its native RTSP server requires Digest authentication.
+Read-only SNMP configuration inspection located the stream URI at
+`1.3.6.1.4.1.35522.3.1.145.0`; the configured path was `/live/h264/ch0` on port 554.
+Do not assume that path or credentials are identical on other installations.
+
+With the development HA instance stopped, two simultaneous RTSP/TCP clients each
+decoded 238 H.264 frames at 320×240 over 15 seconds. The entrance image was checked
+visually. Both clients closed afterward. No ViP call, microphone transmission,
+configuration write, or actuator command was used. Credentials, configuration
+responses, and test images remain in ignored private local files.
+
+A subsequent single-viewer test decoded 2,877 frames over 180 seconds and closed
+normally. In a subsequent one-minute native RTSP test, the user opened live video
+in the Comelit app and confirmed it worked while the RTSP viewer was active.
+
+Concurrent Comelit app live viewing is therefore verified for this installation.
+Actual incoming calls and long-running recording still require validation.
+Native RTSP is not yet wired into this integration's
+camera configuration; the existing camera entities still use the call-based bridge.

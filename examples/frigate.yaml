@@ -1,10 +1,11 @@
 # Merge this fragment into the configuration of your separate Frigate host.
-# Replace HOME_ASSISTANT_IP and YOUR_URL_ENCODED_STREAM_PASSWORD privately.
-# Username/password belong to the RTSP bridge, not the Comelit gateway token.
+# Replace ENTRANCE_IP and RTSP credentials privately; URL-encode credentials.
+# These are the entrance's native RTSP credentials, not the gateway token.
+# Confirm the stream path for your entrance. No HA bridge is required.
 go2rtc:
   streams:
     comelit:
-      - "rtsp://comelit:YOUR_URL_ENCODED_STREAM_PASSWORD@HOME_ASSISTANT_IP:8557/comelit"
+      - "rtsp://RTSP_USER:RTSP_PASSWORD@ENTRANCE_IP:554/live/h264/ch0"
 
 cameras:
   comelit:
