@@ -24,7 +24,7 @@ CONFIG = {
         "user-parameters": {
             "actuator-address-book": [{"name": "Gate"}] * 3,
             "opendoor-address-book": [],
-            "entrance-address-book": [{"name": "Entrance"}],
+            "entrance-address-book": [{"name": "Entrance", "apt-address": "00000101"}],
         },
     },
 }

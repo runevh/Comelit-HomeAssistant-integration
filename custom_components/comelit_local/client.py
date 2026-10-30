@@ -54,12 +54,21 @@ class InvalidResponse(GatewayError):
 
 
 @dataclass(frozen=True)
+class Entrance:
+    """An entrance address book item, excluded from diagnostics."""
+
+    name: str = field(repr=False)
+    address: str = field(repr=False)
+
+
+@dataclass(frozen=True)
 class GatewayInfo:
     """Validated configuration summary; no raw payloads or credentials."""
 
     apartment: str = field(repr=False)
     subaddress: int = field(repr=False)
     directory_counts: dict[str, int]
+    entrances: tuple[Entrance, ...] = field(default=(), repr=False)
 
 
 def validate_token(token: str) -> str:
@@ -94,7 +103,19 @@ def parse_configuration(response: dict[str, Any]) -> GatewayInfo:
         ):
             raise InvalidResponse("Invalid address book")
         counts[key] = len(directory)
-    return GatewayInfo(apartment, subaddress, counts)
+    entrances = []
+    for item in parameters.get("entrance-address-book", []):
+        address = item.get("apt-address")
+        name = item.get("name")
+        if (
+            not isinstance(address, str)
+            or not _ADDRESS.fullmatch(address)
+            or not isinstance(name, str)
+        ):
+            raise InvalidResponse("Invalid entrance address book")
+        if not any(e.address == address for e in entrances):
+            entrances.append(Entrance(name.strip() or "Entrance", address))
+    return GatewayInfo(apartment, subaddress, counts, tuple(entrances))
 
 
 class GatewayClient:

@@ -1,0 +1,24 @@
+# Merge this fragment into the configuration of your separate Frigate host.
+# Replace HOME_ASSISTANT_IP and YOUR_URL_ENCODED_STREAM_PASSWORD privately.
+# Username/password belong to the RTSP bridge, not the Comelit gateway token.
+go2rtc:
+  streams:
+    comelit:
+      - "rtsp://comelit:YOUR_URL_ENCODED_STREAM_PASSWORD@HOME_ASSISTANT_IP:8557/comelit"
+
+cameras:
+  comelit:
+    ffmpeg:
+      inputs:
+        # 127.0.0.1 here is Frigate's own go2rtc restream, not Home Assistant.
+        - path: rtsp://127.0.0.1:8554/comelit
+          input_args: preset-rtsp-restream
+          roles:
+            - detect
+    detect:
+      enabled: false
+      width: 320
+      height: 240
+      fps: 5
+    record:
+      enabled: false

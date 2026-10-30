@@ -1,8 +1,9 @@
 # Entrance video experiment
 
 This branch tests the 1456B entrance feed independently of the actuator branch.
-Nothing in this directory is loaded automatically by Home Assistant. It does not
-add a camera entity or an RTSP server yet.
+Nothing in this directory is loaded automatically by Home Assistant. The branch
+now also includes an opt-in RTSP bridge in the integration; see the main README.
+This probe remains useful independently of that bridge.
 
 `video_probe.py` opens a bounded receive-only self-view session for the single
 configured entrance, counts H.264 RTP packets, optionally decodes one JPEG, and
@@ -68,3 +69,10 @@ The final eight-second probe received 329 RTP packets (payload type 99), decoded
 initial decode error occurred before a usable keyframe; the decoder recovered.
 The session closed cleanly. No actuator/door-release opcode or microphone media
 was sent. The private image is deliberately excluded from the repository.
+
+The HA-hosted RTSP bridge was subsequently tested with a separate FFmpeg client
+connecting through the laptop's LAN address using RTSP/TCP and stream authentication.
+The final 90-second run decoded 1,440 frames with no FFmpeg errors, including one
+upstream video-session renewal. After the client left, HA diagnostics reported zero
+viewers and no active camera session. This is a short compatibility test, not a
+24/7 stability or physical doorbell-call coexistence result.
